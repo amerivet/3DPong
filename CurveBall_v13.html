@@ -1,0 +1,943 @@
+<!-- START OF FILE CurveBall 2v2_v13.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curveball 2v2 - Particles Update</title>
+    <style>
+        body {
+            margin: 0; overflow: hidden; background-color: #111; 
+            font-family: 'Courier New', Courier, monospace; color: #0ff; 
+            user-select: none; display: flex; align-items: center; justify-content: center; height: 100vh;
+        }
+
+        /* GAME CONTAINER */
+        #game-wrapper {
+            position: relative; width: 85vw; height: 85vh; background: #000;
+            border: 4px solid #333; box-shadow: 0 0 50px rgba(0, 255, 255, 0.1); overflow: hidden;
+        }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        
+        .interactive {
+            pointer-events: auto; background: rgba(0, 10, 20, 0.95);
+            border: 2px solid #0ff; padding: 30px; border-radius: 10px;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.15);
+            text-align: center; max-width: 600px; width: 90%;
+            transition: opacity 0.3s;
+        }
+        .hidden { display: none !important; }
+        
+        h1 { font-size: 3rem; text-shadow: 0 0 20px #0ff; margin: 0 0 10px 0; color: #fff; text-transform: uppercase; }
+        h2 { margin: 10px 0; color: #fff; }
+        
+        /* Inputs */
+        .input-group { margin: 15px 0; text-align: left; width: 100%; }
+        label { display: block; color: #aaa; font-size: 0.9rem; margin-bottom: 5px; }
+        input[type="text"] {
+            background: #001122; border: 1px solid #0ff; color: #fff;
+            padding: 8px; font-size: 1.1rem; width: 95%; outline: none; border-radius: 4px;
+        }
+        
+        /* NEW COLOR PICKER (Grid of 10) */
+        .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px 0; justify-items: center; }
+        .c-btn { 
+            width: 35px; height: 35px; border-radius: 50%; cursor: pointer; 
+            border: 2px solid #333; transition: transform 0.2s; 
+        }
+        .c-btn:hover { transform: scale(1.2); }
+        .c-selected { border: 3px solid #fff; box-shadow: 0 0 15px #fff; transform: scale(1.2); z-index: 2; }
+        .c-taken { opacity: 0.2; pointer-events: none; border: 2px solid #555; transform: scale(0.8); }
+
+        /* Buttons */
+        .action-btn {
+            background: #0ff; color: #000; border: none; padding: 12px 30px;
+            font-size: 1.2rem; font-weight: bold; cursor: pointer; margin: 15px 5px;
+            text-transform: uppercase; border-radius: 5px; transition: 0.2s; width: 40%;
+        }
+        .action-btn:hover { background: #fff; box-shadow: 0 0 20px #0ff; }
+        .action-btn:disabled { background: #333; color: #555; cursor: not-allowed; box-shadow: none; }
+
+        /* JOIN BUTTONS */
+        .team-join-container { display: flex; gap: 20px; justify-content: center; margin-top: 20px; width: 100%; }
+        .btn-join-team {
+            flex: 1; padding: 15px; border: 1px solid #444; background: #000; 
+            color: #888; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 1rem;
+            transition: 0.2s;
+        }
+        .btn-join-team:hover { background: #111; border-color: #666; color: #fff; }
+        .join-t1:hover { border-color: #0ff; box-shadow: 0 0 10px rgba(0,255,255,0.3); }
+        .join-t2:hover { border-color: #f0f; box-shadow: 0 0 10px rgba(255,0,255,0.3); }
+
+        /* HUD */
+        #hud-container { position: absolute; top: 20px; width: 100%; pointer-events: none; z-index: 5; }
+        #score-board { display: flex; justify-content: center; gap: 150px; font-size: 4rem; font-weight: bold; text-shadow: 0 0 20px #000; }
+        #names-board { display: flex; justify-content: center; gap: 150px; margin-top: 10px; font-size: 1rem; font-weight: bold; }
+        .team-column { display: flex; flex-direction: column; align-items: center; width: 200px; }
+        .team-1-score { color: #00ffff; text-shadow: 0 0 20px #00ffff; }
+        .team-2-score { color: #ff00ff; text-shadow: 0 0 20px #ff00ff; }
+        .p-name-hud { margin: 2px 0; text-shadow: 1px 1px 2px #000; }
+        
+        #game-message {
+            position: absolute; top: 35%; width: 100%; text-align: center;
+            font-size: 2.5rem; color: #fff; text-shadow: 0 0 10px #fff;
+            pointer-events: none; z-index: 6; font-weight: bold;
+        }
+        
+        /* LOBBY LIST */
+        #lobby-lists { display: flex; justify-content: space-between; margin: 10px 0; width: 100%; gap: 10px; }
+        .lobby-col { width: 48%; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; border: 1px solid #333; }
+        .lobby-col h3 { margin: 0 0 10px 0; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .lobby-slot { font-size: 0.9rem; padding: 5px; text-align: left; }
+
+        #debug-log { margin-top: 10px; font-size: 0.8rem; color: #555; min-height: 1.2em; }
+        #game-over { display: none; color: #ffaa00; font-size: 3rem; margin-bottom: 20px; animation: blink 1s infinite; text-shadow: 0 0 20px #f00; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        #loading-overlay {
+            display: none; position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.8); z-index: 20;
+            flex-direction: column; align-items: center; justify-content: center;
+            color: #0ff; font-size: 1.5rem;
+        }
+        #canvas-container { width: 100%; height: 100%; }
+
+        #host-id-display {
+            font-size: 1.5rem; letter-spacing: 3px; text-align: center; font-weight: bold;
+            border: 2px dashed #0ff; background: #000; color: #fff; cursor: pointer; width: 150px; margin: 0 auto;
+        }
+
+        .menu-controls { display:flex; flex-direction:column; gap:10px; margin-top:20px; }
+        .menu-btn { padding:12px; font-weight:bold; cursor:pointer; border:none; border-radius:4px; font-size:1rem; }
+        .btn-rematch { background:#00ff00; color:#000; box-shadow:0 0 10px #0f0; display:none; }
+        .btn-rematch:hover { background:#fff; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <div id="hud-container">
+            <div id="score-board">
+                <div class="team-1-score" id="score-a">0</div>
+                <div class="team-2-score" id="score-b">0</div>
+            </div>
+            <div id="names-board">
+                <div class="team-column" id="names-t1" style="color:#00ffff"></div>
+                <div class="team-column" id="names-t2" style="color:#ff00ff"></div>
+            </div>
+        </div>
+
+        <div id="game-message"></div>
+
+        <div id="loading-overlay">
+            <div id="loading-text">Connecting...</div>
+            <button onclick="location.reload()" style="margin-top:20px; background:#333; border:1px solid #555; color:#fff; padding:10px; cursor:pointer;">Cancel</button>
+        </div>
+
+        <div id="ui-layer">
+            <!-- MAIN MENU -->
+            <div id="main-menu" class="interactive">
+                <h1>Curveball 2v2</h1>
+                
+                <div class="input-group">
+                    <label>YOUR NAME:</label>
+                    <input type="text" id="input-name" placeholder="Enter Name" maxlength="12">
+                </div>
+
+                <div style="display:flex; justify-content:center; width:100%;">
+                    <button id="btn-host" class="action-btn" disabled>HOST GAME</button>
+                    <button id="btn-join" class="action-btn" disabled>JOIN GAME</button>
+                </div>
+
+                <div id="join-area" style="display:none; margin-top:15px; border-top:1px solid #333; padding-top:10px;">
+                    <input type="text" id="input-join-id" placeholder="Enter 4-Digit Host ID">
+                    <button onclick="confirmJoin()" style="background:#0f0; color:#000; border:none; padding:5px 15px; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:10px;">CONNECT</button>
+                </div>
+
+                <div id="debug-log">Initializing Network...</div>
+            </div>
+
+            <!-- LOBBY / WAITING SCREEN -->
+            <div id="waiting-screen" class="interactive hidden">
+                <div id="game-over">GAME OVER</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="text-align:left;">
+                        <span style="color:#aaa; font-size:0.8rem;">LOBBY ID:</span><br>
+                        <input type="text" id="host-id-display" readonly onclick="this.select()">
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="color:#aaa; font-size:0.8rem;">STATUS:</span><br>
+                        <span id="lobby-status" style="color:#fff; font-weight:bold;">WAITING</span>
+                    </div>
+                </div>
+
+                <!-- LOBBY LISTS -->
+                <div id="lobby-lists">
+                    <div class="lobby-col" style="border-color:#008888;">
+                        <h3 style="color:#00ffff">TEAM 1</h3>
+                        <div id="list-t1"></div>
+                    </div>
+                    <div class="lobby-col" style="border-color:#880088;">
+                        <h3 style="color:#ff00ff">TEAM 2</h3>
+                        <div id="list-t2"></div>
+                    </div>
+                </div>
+
+                <!-- SELECTION AREA -->
+                <div id="selection-area">
+                    <label style="margin-top:15px;">CHOOSE YOUR COLOR:</label>
+                    <div class="color-grid" id="color-picker">
+                        <!-- 10 COLORS generated by JS -->
+                    </div>
+
+                    <div class="team-join-container">
+                        <button class="btn-join-team join-t1" onclick="requestSlot(1)">JOIN TEAM 1</button>
+                        <button class="btn-join-team join-t2" onclick="requestSlot(2)">JOIN TEAM 2</button>
+                    </div>
+                    <p style="color:#555; font-size:0.8rem; margin-top:10px;">Select color, then click a team to join.</p>
+                </div>
+
+                <div class="menu-controls">
+                    <button id="btn-start-close" class="menu-btn btn-start hidden" onclick="closeLobby()">CLOSE MENU</button>
+                    <button id="btn-rematch" class="menu-btn btn-rematch" onclick="hostRematch()">START REMATCH</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="canvas-container"></div>
+    </div>
+
+<script>
+// --- 1. AUDIO ENGINE ---
+const AudioEngine = {
+    ctx: null,
+    init: () => {
+        if (!AudioEngine.ctx) AudioEngine.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (AudioEngine.ctx.state === 'suspended') AudioEngine.ctx.resume();
+    },
+    playHit: (speed) => {
+        if (!AudioEngine.ctx) return;
+        const osc = AudioEngine.ctx.createOscillator();
+        const gain = AudioEngine.ctx.createGain();
+        const basePitch = 600 + (speed * 200); 
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(basePitch, AudioEngine.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, AudioEngine.ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.4, AudioEngine.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, AudioEngine.ctx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(AudioEngine.ctx.destination);
+        osc.start(); osc.stop(AudioEngine.ctx.currentTime + 0.15);
+    }
+};
+
+// --- 2. CONFIGURATION ---
+const C = {
+    TUNNEL_W: 40, TUNNEL_H: 26, TUNNEL_D: 110,
+    PADDLE_W: 6.0, PADDLE_H: 3.5, 
+    BALL_R: 0.8, MAX_SPEED: 2.0, CURVE: 0.12,
+    MAX_SCORE: 10, SERVE_Z_OFFSET: 45
+};
+
+// 10 HIGH VISIBILITY COLORS
+const COLORS = [
+    "#00FFFF", // Cyan
+    "#FF00FF", // Magenta
+    "#00FF00", // Lime
+    "#FF0000", // Red
+    "#FFFF00", // Yellow
+    "#FFA500", // Orange
+    "#0088FF", // Electric Blue
+    "#9900FF", // Purple
+    "#FF69B4", // Hot Pink
+    "#00FF99"  // Spring Green
+];
+
+const PEER_CONFIG = { config: { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] } };
+
+// --- 3. STATE ---
+let myIndex = -1; // -1 means Spectator/Lobby
+let myName = "Player";
+let selectedColor = COLORS[0];
+const getTeam = (idx) => (idx % 2 === 0) ? 1 : 2; 
+
+let state = {
+    gameOver: false,
+    winner: null,
+    scores: [0, 0],
+    turnTeam: 1,
+    ball: { x:0, y:0, z:0, vx:0, vy:0, vz:0, sx:0, sy:0, col:'#ffffff' },
+    paddles: [
+        {x:0, y:0, vx:0, vy:0, active:false, name:"", col:"#fff"}, 
+        {x:0, y:0, vx:0, vy:0, active:false, name:"", col:"#fff"},
+        {x:0, y:0, vx:0, vy:0, active:false, name:"", col:"#fff"}, 
+        {x:0, y:0, vx:0, vy:0, active:false, name:"", col:"#fff"}
+    ]
+};
+
+let peer = null, connections = [], clientConn = null;
+let mouse = { x: 0, y: 0, vx: 0, vy: 0 }; 
+let prevMouse = { x: 0, y: 0 };
+const gameWrapper = document.getElementById('game-wrapper');
+let gameOverFlagShown = false; 
+
+// --- 4. UI LOGIC ---
+const ui = {
+    menu: document.getElementById('main-menu'),
+    lobby: document.getElementById('waiting-screen'),
+    log: document.getElementById('debug-log'),
+    joinArea: document.getElementById('join-area'),
+    hostId: document.getElementById('host-id-display'),
+    gameOver: document.getElementById('game-over'),
+    loading: document.getElementById('loading-overlay'),
+    loadingText: document.getElementById('loading-text'),
+    listT1: document.getElementById('list-t1'),
+    listT2: document.getElementById('list-t2'),
+    colorPicker: document.getElementById('color-picker'),
+    selectionArea: document.getElementById('selection-area'),
+    btnStart: document.getElementById('btn-start-close'),
+    btnRematch: document.getElementById('btn-rematch'),
+    lobbyStatus: document.getElementById('lobby-status')
+};
+
+function initColorPicker() {
+    ui.colorPicker.innerHTML = '';
+    COLORS.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'c-btn';
+        div.style.background = c;
+        div.dataset.col = c;
+        div.onclick = () => selectLocalColor(c);
+        ui.colorPicker.appendChild(div);
+    });
+    selectLocalColor(COLORS[0]);
+}
+initColorPicker();
+
+function selectLocalColor(c) {
+    selectedColor = c;
+    Array.from(ui.colorPicker.children).forEach(btn => {
+        btn.classList.toggle('c-selected', btn.dataset.col === c);
+    });
+}
+
+function updateColorAvailability() {
+    // Get list of taken colors
+    const taken = state.paddles.filter(p => p.active).map(p => p.col);
+    
+    Array.from(ui.colorPicker.children).forEach(btn => {
+        const c = btn.dataset.col;
+        let isTaken = false;
+        if (myIndex === -1) {
+            isTaken = taken.includes(c);
+        } else {
+            isTaken = taken.includes(c) && state.paddles[myIndex].col !== c;
+        }
+        
+        btn.classList.toggle('c-taken', isTaken);
+    });
+}
+
+function log(t, isError=false) { 
+    ui.log.innerText = t; 
+    if(isError) ui.log.style.color = "#ff5555"; else ui.log.style.color = "#aaa";
+}
+
+// --- 5. NETWORK INIT ---
+function initNetwork(attempts = 0) {
+    if(attempts > 3) { log("Failed to find ID. Try again later.", true); return; }
+    const shortId = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    try {
+        peer = new Peer(shortId, PEER_CONFIG);
+        peer.on('open', (id) => {
+            log("Network Ready.");
+            document.getElementById('btn-host').disabled = false;
+            document.getElementById('btn-join').disabled = false;
+        });
+        peer.on('error', (err) => {
+            if(err.type === 'unavailable-id') initNetwork(attempts + 1);
+            else { console.error(err); log("Error: " + err.type, true); ui.loading.style.display = 'none'; }
+        });
+    } catch (e) { log("CRITICAL: " + e, true); }
+}
+initNetwork();
+
+// Button Handlers
+document.getElementById('btn-host').onclick = () => {
+    AudioEngine.init();
+    if(!validateName()) return;
+    myIndex = -1; // Host starts as spectator until they claim a spot
+    setupHost(peer.id);
+};
+
+document.getElementById('btn-join').onclick = () => {
+    AudioEngine.init();
+    if(!validateName()) return;
+    ui.joinArea.style.display = 'block';
+    document.getElementById('btn-host').style.display = 'none';
+    document.getElementById('btn-join').style.display = 'none';
+};
+
+function validateName() {
+    const n = document.getElementById('input-name').value.trim();
+    if(!n) { alert("Enter Name"); return false; }
+    myName = n; return true;
+}
+
+function confirmJoin() {
+    const id = document.getElementById('input-join-id').value.trim();
+    if(id.length !== 4) { alert("ID must be 4 digits"); return; }
+    
+    ui.loading.style.display = 'flex';
+    ui.loadingText.innerText = "Connecting to Lobby...";
+    
+    clientConn = peer.connect(id, { reliable: true });
+    clientConn.on('open', () => {
+        ui.loadingText.innerText = "Joined. Entering Lobby...";
+        clientConn.send({ t: 'get_state' });
+    });
+    clientConn.on('data', handleClientData);
+    clientConn.on('close', () => { alert("Disconnected"); location.reload(); });
+    clientConn.on('error', e => { ui.loading.style.display = 'none'; alert("Conn Error: " + e); });
+}
+
+function requestSlot(team) {
+    const req = { t: 'claim_slot', team: team, name: myName, col: selectedColor };
+    
+    if (!clientConn) {
+        handleClaimRequest(null, req, true);
+    } else {
+        clientConn.send(req);
+    }
+}
+
+function setupHost(id) {
+    ui.menu.classList.add('hidden');
+    ui.lobby.classList.remove('hidden');
+    ui.hostId.value = id;
+    state.scores = [0, 0];
+    resetRound();
+    updateLobbyUI();
+    setCamera(0); 
+
+    peer.on('connection', conn => {
+        connections.push({ conn: conn, idx: -1 });
+        conn.on('open', () => { conn.send({ t: 'init', state: state, idx: -1 }); });
+        conn.on('data', data => {
+            if(data.t === 'get_state') conn.send({ t: 'init', state: state, idx: -1 });
+            if(data.t === 'claim_slot') handleClaimRequest(conn, data, false);
+            if(data.t === 'move') handleMove(conn, data);
+            if(data.t === 'serve') handleServe(conn, data.p);
+        });
+        conn.on('close', () => handleDisconnect(conn));
+    });
+}
+
+function handleClaimRequest(conn, data, isHostLocal) {
+    const takenColors = state.paddles.filter((p, i) => p.active && (isHostLocal ? i !== myIndex : true)).map(p => p.col);
+    
+    if (takenColors.includes(data.col)) {
+        if (!isHostLocal) conn.send({t: 'error', msg: 'Color taken'});
+        return;
+    }
+
+    let slotsToCheck = (data.team === 1) ? [0, 2] : [1, 3];
+    let assignedSlot = -1;
+
+    for (let s of slotsToCheck) {
+        if (!state.paddles[s].active) {
+            assignedSlot = s;
+            break;
+        }
+    }
+
+    if (assignedSlot === -1) {
+        if (!isHostLocal) conn.send({t: 'error', msg: 'Team Full'});
+        return;
+    }
+
+    let oldIdx = isHostLocal ? myIndex : connections.find(c => c.conn === conn).idx;
+    if (oldIdx !== -1) {
+        state.paddles[oldIdx].active = false;
+    }
+
+    state.paddles[assignedSlot] = { 
+        x:0, y:0, vx:0, vy:0, 
+        active: true, 
+        name: data.name, 
+        col: data.col 
+    };
+    updatePaddleMeshColor(assignedSlot, data.col);
+
+    if (isHostLocal) {
+        myIndex = assignedSlot;
+        setCamera(myIndex);
+        ui.selectionArea.classList.add('hidden'); 
+        ui.btnStart.classList.remove('hidden');
+    } else {
+        const cObj = connections.find(c => c.conn === conn);
+        if (cObj) cObj.idx = assignedSlot;
+        conn.send({ t: 'joined', idx: assignedSlot });
+    }
+
+    const activeCount = state.paddles.filter(p => p.active).length;
+    if (activeCount === 2 && state.scores[0] === 0 && state.scores[1] === 0) {
+        resetRound();
+    }
+
+    broadcast('sync', state);
+    updateLobbyUI();
+}
+
+function hostRematch() {
+    state.scores = [0, 0];
+    state.gameOver = false;
+    state.winner = null;
+    gameOverFlagShown = false;
+    resetRound();
+    updateLobbyUI();
+    closeLobby();
+    broadcast('reset_game', {});
+}
+
+// --- 6. GRAPHICS ---
+const TextureGen = {
+    grid: (c1, c2) => {
+        const c=document.createElement('canvas'); c.width=512; c.height=512;
+        const x=c.getContext('2d');
+        x.fillStyle='#050510'; x.fillRect(0,0,512,512);
+        x.shadowBlur=15; x.shadowColor=c1; x.strokeStyle=c1; x.lineWidth=4;
+        x.beginPath(); for(let i=0;i<=512;i+=64){x.moveTo(i,0);x.lineTo(i,512);x.moveTo(0,i);x.lineTo(512,i);} x.stroke();
+        x.shadowBlur=0; x.strokeStyle=c2; x.lineWidth=1; x.globalAlpha=0.5;
+        x.beginPath(); for(let i=0;i<=512;i+=16){x.moveTo(i,0);x.lineTo(i,512);x.moveTo(0,i);x.lineTo(512,i);} x.stroke();
+        return new THREE.CanvasTexture(c);
+    },
+    paddle: (color) => {
+        const c=document.createElement('canvas'); c.width=256; c.height=128;
+        const x=c.getContext('2d');
+        x.strokeStyle=color; x.lineWidth=8; x.shadowColor=color; x.shadowBlur=20;
+        x.strokeRect(10,10,236,108);
+        x.fillStyle=color; x.globalAlpha=0.3; x.shadowBlur=0;
+        x.fillRect(15,15,226,98);
+        x.globalAlpha=1.0; x.strokeStyle='#fff'; x.lineWidth=2; x.shadowBlur=0;
+        x.beginPath(); x.arc(128, 64, 12, 0, Math.PI*2); x.stroke();
+        return new THREE.CanvasTexture(c);
+    }
+};
+
+const scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x000000, 0.01);
+const camera = new THREE.PerspectiveCamera(75, gameWrapper.clientWidth/gameWrapper.clientHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(gameWrapper.clientWidth, gameWrapper.clientHeight);
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0x404040));
+const light = new THREE.PointLight(0xffffff, 1.5, 80); scene.add(light);
+
+const tG = new THREE.Group();
+const texA = TextureGen.grid('#008888','#002244'); texA.wrapS=texA.wrapT=THREE.RepeatWrapping; texA.repeat.set(4,10);
+const texB = TextureGen.grid('#880088','#440022'); texB.wrapS=texB.wrapT=THREE.RepeatWrapping; texB.repeat.set(4,10);
+const mA = new THREE.MeshBasicMaterial({map:texA, side:THREE.DoubleSide});
+const mB = new THREE.MeshBasicMaterial({map:texB, side:THREE.DoubleSide});
+const fl = new THREE.Mesh(new THREE.PlaneGeometry(C.TUNNEL_W, C.TUNNEL_D), mA); fl.rotation.x=-Math.PI/2; fl.position.y=-C.TUNNEL_H/2; tG.add(fl);
+const ce = new THREE.Mesh(new THREE.PlaneGeometry(C.TUNNEL_W, C.TUNNEL_D), mA); ce.rotation.x=Math.PI/2; ce.position.y=C.TUNNEL_H/2; tG.add(ce);
+const wl = new THREE.Mesh(new THREE.PlaneGeometry(C.TUNNEL_D, C.TUNNEL_H), mB); wl.rotation.y=Math.PI/2; wl.position.x=-C.TUNNEL_W/2; tG.add(wl);
+const wr = new THREE.Mesh(new THREE.PlaneGeometry(C.TUNNEL_D, C.TUNNEL_H), mB); wr.rotation.y=-Math.PI/2; wr.position.x=C.TUNNEL_W/2; tG.add(wr);
+scene.add(tG);
+
+const ballMat = new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffffff, emissiveIntensity:0.8});
+const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(C.BALL_R,32,32), ballMat);
+scene.add(ballMesh);
+
+const paddleMeshes = [], spotMeshes = [];
+const pGeo = new THREE.PlaneGeometry(C.PADDLE_W, C.PADDLE_H);
+const spotGeo = new THREE.CircleGeometry(0.6, 16);
+const spotMat = new THREE.MeshBasicMaterial({color:0xff0000});
+
+for(let i=0; i<4; i++) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({ map: TextureGen.paddle('#ffffff'), transparent: true, depthWrite: true, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(pGeo, mat);
+    group.add(mesh);
+    const spot = new THREE.Mesh(spotGeo, spotMat);
+    spot.position.z = 0.2; spot.visible = false;
+    group.add(spot);
+    spotMeshes.push(spot);
+    group.position.z = (getTeam(i) === 1) ? C.TUNNEL_D/2 : -C.TUNNEL_D/2;
+    scene.add(group);
+    paddleMeshes.push(group);
+}
+
+function updatePaddleMeshColor(idx, col) {
+    const mesh = paddleMeshes[idx].children[0];
+    mesh.material.map = TextureGen.paddle(col);
+    mesh.material.needsUpdate = true;
+}
+
+// --- NEW PARTICLE SYSTEM ---
+const particles = [];
+const particleGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+
+function spawnWallParticles(x, y, z, color, side) {
+    for(let i=0; i<15; i++) {
+        const mat = new THREE.MeshBasicMaterial({color: color});
+        const mesh = new THREE.Mesh(particleGeo, mat);
+        mesh.position.set(x, y, z);
+        
+        let vx = (Math.random() - 0.5) * 1.5;
+        let vy = (Math.random() - 0.5) * 1.5;
+        let vz = (Math.random() - 0.5) * 1.5;
+        
+        // Bias away from wall
+        if(side === 'left') vx = Math.abs(vx) + 0.3;
+        if(side === 'right') vx = -Math.abs(vx) - 0.3;
+        if(side === 'top') vy = -Math.abs(vy) - 0.3;
+        if(side === 'bottom') vy = Math.abs(vy) + 0.3;
+
+        scene.add(mesh);
+        particles.push({ mesh, vx, vy, vz, life: 1.0 });
+    }
+}
+
+// --- 7. HOST LOGIC ---
+function handleMove(conn, data) {
+    const c = connections.find(x => x.conn === conn);
+    if(c && c.idx !== -1) { 
+        state.paddles[c.idx].x = data.x; state.paddles[c.idx].y = data.y; 
+        state.paddles[c.idx].vx = data.vx; state.paddles[c.idx].vy = data.vy; 
+    }
+}
+function handleServe(conn, data) { applyServe(data); }
+function handleDisconnect(conn) {
+    const c = connections.find(x => x.conn === conn);
+    if(c) {
+        if(c.idx !== -1) state.paddles[c.idx].active = false;
+        connections = connections.filter(x => x !== c);
+        updateLobbyUI();
+        broadcast('sync', state);
+    }
+}
+function applyServe(d) {
+    state.ball.vx = d.vx; state.ball.vy = d.vy; state.ball.vz = d.vz;
+    state.ball.sx = d.vx * 0.1; state.ball.sy = d.vy * 0.1;
+    state.ball.col = '#ffffff';
+    broadcast('sync', state);
+    AudioEngine.playHit(0.5);
+}
+function resetRound() {
+    state.ball.vx = 0; state.ball.vy = 0; state.ball.vz = 0;
+    state.ball.sx = 0; state.ball.sy = 0;
+    state.ball.col = '#ffffff';
+    state.ball.x = 0; state.ball.y = 0;
+    if(state.turnTeam === 1) state.ball.z = C.SERVE_Z_OFFSET; else state.ball.z = -C.SERVE_Z_OFFSET;
+    broadcast('sync', state);
+}
+
+// --- 8. INPUT ---
+document.addEventListener('mousemove', e => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const newX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const newY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    mouse.vx = (newX - prevMouse.x) * 50; 
+    mouse.vy = (newY - prevMouse.y) * 50;
+    mouse.x = newX; mouse.y = newY;
+    prevMouse.x = newX; prevMouse.y = newY;
+});
+
+document.addEventListener('mousedown', () => {
+    if(state.gameOver || myIndex === -1) return; // Spectators can't click
+    if(Math.abs(state.ball.vz) > 0.1) return;
+    const myTeam = getTeam(myIndex);
+    if(state.turnTeam !== myTeam) return;
+    const dir = (state.turnTeam === 1) ? -1 : 1;
+    const speedBonus = Math.abs(mouse.vy) * 0.1;
+    const serveVz = (0.8 + speedBonus) * dir;
+    const serve = { vz: serveVz, vx: (Math.random()-0.5)*0.2 + (mouse.vx * 0.1), vy: (Math.random()-0.5)*0.2 + (mouse.vy * 0.1) };
+    if(myIndex === 0 || !clientConn) applyServe(serve); else if(clientConn) clientConn.send({t:'serve', p: serve});
+});
+
+// --- 9. PHYSICS (HOST) ---
+const clock = new THREE.Clock();
+function physicsStep(dt) {
+    if(state.gameOver) return;
+    const ts = dt * 60; let b = state.ball;
+    b.vx += b.sx * C.CURVE * ts; b.vy += b.sy * C.CURVE * ts;
+    b.x += b.vx * ts; b.y += b.vy * ts; b.z += b.vz * ts;
+    
+    // COLLISION & PARTICLES
+    const maxX = C.TUNNEL_W/2 - C.BALL_R; 
+    const maxY = C.TUNNEL_H/2 - C.BALL_R;
+
+    if(b.x > maxX){
+        b.x = maxX; b.vx *= -1;
+        spawnWallParticles(b.x, b.y, b.z, b.col, 'right');
+        broadcast('wall', {x:b.x, y:b.y, z:b.z, col:b.col, side:'right'});
+    } 
+    if(b.x < -maxX){
+        b.x = -maxX; b.vx *= -1;
+        spawnWallParticles(b.x, b.y, b.z, b.col, 'left');
+        broadcast('wall', {x:b.x, y:b.y, z:b.z, col:b.col, side:'left'});
+    }
+    if(b.y > maxY){
+        b.y = maxY; b.vy *= -1;
+        spawnWallParticles(b.x, b.y, b.z, b.col, 'top');
+        broadcast('wall', {x:b.x, y:b.y, z:b.z, col:b.col, side:'top'});
+    } 
+    if(b.y < -maxY){
+        b.y = -maxY; b.vy *= -1;
+        spawnWallParticles(b.x, b.y, b.z, b.col, 'bottom');
+        broadcast('wall', {x:b.x, y:b.y, z:b.z, col:b.col, side:'bottom'});
+    }
+
+    const zLim = C.TUNNEL_D/2;
+    const activePlayers = state.paddles.filter(p=>p.active).length;
+    
+    // T1 SIDE
+    if(b.z > zLim - 2) {
+        if(b.z > zLim + 5) { score(2); return; }
+        if(b.vz > 0) { if(checkHit(b, 0)) reflect(b, 0); else if(checkHit(b, 2)) reflect(b, 2); }
+    }
+    // T2 SIDE
+    if(b.z < -zLim + 2) {
+        if(b.z < -zLim - 5) { 
+            if(activePlayers === 1) { b.vz *= -1; b.vx = (state.paddles[myIndex === -1 ? 0 : myIndex].x - b.x)*0.05; b.col = "#ff0000"; return; }
+            score(1); return; 
+        }
+        if(b.vz < 0) { if(checkHit(b, 1)) reflect(b, 1); else if(checkHit(b, 3)) reflect(b, 3); }
+    }
+}
+
+function checkHit(b, idx) {
+    const p = state.paddles[idx];
+    if(!p.active) return false;
+    const dx = Math.abs(b.x - p.x); const dy = Math.abs(b.y - p.y);
+    return (dx < C.PADDLE_W/2 + C.BALL_R && dy < C.PADDLE_H/2 + C.BALL_R);
+}
+function reflect(b, idx) {
+    const p = state.paddles[idx];
+    b.col = p.col;
+    const paddleSpeed = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+    let speedMod = 1.05 + (paddleSpeed * 0.05); 
+    b.vz *= -speedMod;
+    if(Math.abs(b.vz) > C.MAX_SPEED) b.vz = C.MAX_SPEED * Math.sign(b.vz);
+    b.sx = (p.vx * 0.15) + ((b.x - p.x) * 0.05);
+    b.sy = (p.vy * 0.15) + ((b.y - p.y) * 0.05);
+    b.vx += (b.x - p.x) * 0.1;
+    b.vy += (b.y - p.y) * 0.1;
+
+    const dist = Math.sqrt((b.x-p.x)**2 + (b.y-p.y)**2);
+    if(dist < 1.5) { b.vz *= 1.1; triggerFlash(idx); } 
+    AudioEngine.playHit(Math.abs(b.vz));
+    broadcast('hit', {idx: idx, b: b});
+}
+function score(winTeam) {
+    if(winTeam === 1) state.scores[0]++; else state.scores[1]++;
+    if(state.scores[0] >= C.MAX_SCORE || state.scores[1] >= C.MAX_SCORE) { 
+        state.gameOver = true; 
+        state.winner = winTeam;
+    }
+    state.turnTeam = (winTeam === 1) ? 2 : 1;
+    resetRound();
+}
+function triggerFlash(idx) {
+    const spot = spotMeshes[idx]; spot.visible = true;
+    setTimeout(() => spot.visible = false, 300);
+    if(!clientConn) broadcast('flash', idx);
+}
+function broadcast(t, p) { connections.forEach(c => c.conn.send({t:t, p:p})); }
+
+// --- 10. CLIENT SYNC ---
+function handleClientData(d) {
+    if(d.t === 'init') {
+        ui.loading.style.display = 'none';
+        myIndex = d.idx; 
+        state = d.state;
+        state.paddles.forEach((p, i) => { if(p.active) updatePaddleMeshColor(i, p.col); });
+        
+        ui.menu.classList.add('hidden');
+        ui.lobby.classList.remove('hidden');
+        updateLobbyUI();
+        setCamera(0);
+    }
+    if(d.t === 'joined') {
+        myIndex = d.idx;
+        ui.selectionArea.classList.add('hidden');
+        ui.btnStart.classList.remove('hidden');
+        setCamera(myIndex);
+    }
+    if(d.t === 'error') { alert(d.msg); }
+    if(d.t === 'sync') {
+        state = d.p;
+        ballMesh.material.color.set(state.ball.col);
+        ballMesh.material.emissive.set(state.ball.col);
+        updateUI();
+        updateLobbyUI();
+    }
+    if(d.t === 'flash') triggerFlash(d.p);
+    if(d.t === 'hit') { state.ball = d.p.b; AudioEngine.playHit(Math.abs(state.ball.vz)); }
+    if(d.t === 'wall') spawnWallParticles(d.p.x, d.p.y, d.p.z, d.p.col, d.p.side);
+    if(d.t === 'reset_game') {
+        gameOverFlagShown = false;
+        closeLobby();
+        ui.gameOver.style.display = 'none';
+    }
+}
+
+// --- 11. RENDER LOOP ---
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+    
+    // UPDATE PARTICLES
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= 0.03; // Fade speed
+        p.mesh.position.x += p.vx * 0.5;
+        p.mesh.position.y += p.vy * 0.5;
+        p.mesh.position.z += p.vz * 0.5;
+        p.mesh.rotation.x += 0.2;
+        p.mesh.rotation.y += 0.2;
+        p.mesh.scale.setScalar(p.life);
+        
+        if (p.life <= 0) {
+            scene.remove(p.mesh);
+            p.mesh.material.dispose();
+            particles.splice(i, 1);
+        }
+    }
+
+    if(myIndex !== -1 && !state.gameOver) {
+        const myTeam = getTeam(myIndex);
+        let inputX = mouse.x; if(myTeam === 2) inputX = -inputX;
+        const p = state.paddles[myIndex];
+        const xLim = C.TUNNEL_W/2 - C.PADDLE_W/2 - 0.0;
+        const yLim = C.TUNNEL_H/2 - C.PADDLE_H/2 - 0.0;
+        p.x = Math.max(-xLim, Math.min(xLim, inputX * (C.TUNNEL_W/1.5)));
+        p.y = Math.max(-yLim, Math.min(yLim, mouse.y * (C.TUNNEL_H/1.5)));
+        if(clientConn) clientConn.send({t:'move', x:p.x, y:p.y, vx:mouse.vx, vy:mouse.vy});
+        else { p.vx = mouse.vx; p.vy = mouse.vy; }
+    }
+    if(!clientConn) { physicsStep(dt); broadcast('sync', state); }
+
+    paddleMeshes.forEach((grp, i) => {
+        const p = state.paddles[i];
+        if(p.active) {
+            grp.visible = true;
+            if(i === myIndex) { grp.position.x = p.x; grp.position.y = p.y; } 
+            else { grp.position.x += (p.x - grp.position.x) * 0.3; grp.position.y += (p.y - grp.position.y) * 0.3; }
+        } else grp.visible = false;
+    });
+    ballMesh.position.set(state.ball.x, state.ball.y, state.ball.z);
+    if(!clientConn) { ballMesh.material.color.set(state.ball.col); ballMesh.material.emissive.set(state.ball.col); }
+    light.position.copy(ballMesh.position); light.color.set(state.ball.col);
+    const s = Math.abs(state.ball.vz); texA.offset.y -= s * dt * 0.5; texB.offset.x -= s * dt * 0.5;
+    renderer.render(scene, camera);
+    updateUI();
+}
+animate();
+
+function updateLobbyUI() {
+    ui.listT1.innerHTML = ''; ui.listT2.innerHTML = '';
+    
+    state.paddles.forEach((p, i) => {
+        if (!p.active) return; 
+        const div = document.createElement('div');
+        div.className = 'lobby-slot';
+        div.innerHTML = `<span style="color:${p.col}">■</span> ${p.name} ${i===myIndex ? '(YOU)' : ''}`;
+        div.style.color = p.col;
+        
+        if (getTeam(i) === 1) ui.listT1.appendChild(div);
+        else ui.listT2.appendChild(div);
+    });
+    
+    updateColorAvailability();
+    
+    const pCount = state.paddles.filter(p=>p.active).length;
+    ui.lobbyStatus.innerText = `${pCount} PLAYER(S) IN LOBBY`;
+}
+
+function updateUI() {
+    document.getElementById('score-a').innerText = state.scores[0];
+    document.getElementById('score-b').innerText = state.scores[1];
+    document.getElementById('names-t1').innerHTML = ""; 
+    document.getElementById('names-t2').innerHTML = "";
+    
+    state.paddles.forEach((p, i) => {
+        if(p.active) {
+            const div = document.createElement('div'); div.className = "p-name-hud";
+            div.innerText = p.name; div.style.color = p.col;
+            if(getTeam(i) === 1) document.getElementById('names-t1').appendChild(div); 
+            else document.getElementById('names-t2').appendChild(div);
+        }
+    });
+    
+    if(state.gameOver) {
+        if(!gameOverFlagShown) {
+            gameOverFlagShown = true;
+            ui.gameOver.style.display = 'block';
+            ui.gameOver.innerText = `TEAM ${state.winner} WINS!`;
+            
+            document.getElementById('ui-layer').classList.remove('hidden');
+            ui.lobby.classList.remove('hidden');
+            
+            if(!clientConn) {
+                ui.btnRematch.style.display = 'block';
+                ui.btnStart.style.display = 'none';
+            } else {
+                ui.btnRematch.style.display = 'none';
+                ui.btnStart.style.display = 'block';
+            }
+        }
+        return; 
+    } 
+    
+    if(gameOverFlagShown && !state.gameOver) {
+        gameOverFlagShown = false;
+        ui.gameOver.style.display = 'none';
+    }
+    
+    const msg = document.getElementById('game-message');
+    const activePlayers = state.paddles.filter(p=>p.active).length;
+    
+    if (myIndex === -1) {
+        msg.innerText = "SPECTATING"; msg.style.color="#aaa";
+        return;
+    }
+    
+    if(Math.abs(state.ball.vz) < 0.01) {
+        const myTeam = getTeam(myIndex);
+        if(state.turnTeam === myTeam) { 
+            msg.innerText = activePlayers < 2 ? "CLICK TO PRACTICE" : "CLICK TO SERVE"; 
+            msg.style.color="#0f0"; 
+        } else { msg.innerText = "OPPONENT SERVING"; msg.style.color="#f00"; }
+    } else { msg.innerText = ""; }
+}
+
+function setCamera(idx) {
+    const team = getTeam(idx);
+    const zOff = C.TUNNEL_D/2 + 17;
+    if(team === 1) { camera.position.set(0, 0, zOff); camera.lookAt(0,0,-100); }
+    else { camera.position.set(0, 0, -zOff); camera.lookAt(0,0,100); }
+}
+
+function closeLobby() { 
+    ui.lobby.classList.add('hidden'); 
+    document.getElementById('ui-layer').classList.add('hidden'); 
+    ui.btnStart.style.display = 'block';
+    ui.btnRematch.style.display = 'none';
+}
+
+window.addEventListener('resize', () => { 
+    camera.aspect = gameWrapper.clientWidth / gameWrapper.clientHeight; 
+    camera.updateProjectionMatrix(); 
+    renderer.setSize(gameWrapper.clientWidth, gameWrapper.clientHeight); 
+});
+</script>
+</body>
+</html>
